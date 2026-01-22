@@ -1,0 +1,648 @@
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+
+#Page config
+st.set_page_config(page_title="Sales Forecast Simulator", layout="wide")
+
+#Title
+st.title("Sales Forecast Simulator")
+
+#Loading the dataset
+@st.cache_data
+def load_data():
+    df = pd.read_csv('Sample - Superstore.csv', encoding='latin1')
+    df['Order Date'] = pd.to_datetime(df['Order Date'], format='%m/%d/%Y')
+    df['Ship Date'] = pd.to_datetime(df['Ship Date'], format='%m/%d/%Y')
+    return df
+
+df = load_data()
+
+#Showing info
+st.sidebar.header("Dataset Info")
+st.sidebar.metric("Total Orders", f"{len(df):,}")
+st.sidebar.metric("Date Range", f"{df['Order Date'].min().date()} to {df['Order Date'].max().date()}")
+st.sidebar.metric("Total Revenue", f"${df['Sales'].sum():,.2f}")
+
+#Displaying data sample
+st.subheader("Data Preview")
+st.dataframe(df.head(10))
+
+#Statistics
+st.subheader("Quick Statistics")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Average Order Value", f"${df['Sales'].mean():.2f}")
+col2.metric("Total Profit", f"${df['Profit'].sum():,.2f}")
+col3.metric("Unique Customers", f"{df['Customer ID'].nunique():,}")
+col4.metric("Product Categories", f"{df['Category'].nunique()}")
+
+#Historical Sales Trend
+st.subheader("Historical Sales Trend")
+
+#Aggregating sales by month
+df_monthly = df.groupby(df['Order Date'].dt.to_period('M'))['Sales'].sum().reset_index()
+df_monthly['Order Date'] = df_monthly['Order Date'].dt.to_timestamp()
+
+#Creating interactive line chart
+fig = px.line(df_monthly, 
+              x='Order Date', 
+              y='Sales',
+              title='Monthly Sales Over Time',
+              labels={'Sales': 'Total Sales ($)', 'Order Date': 'Month'})
+
+fig.update_traces(line_color='#1f77b4', line_width=3)
+fig.update_layout(
+    hovermode='x unified',
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)',
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+#Adding filters
+st.subheader("Filter Data")
+col1, col2 = st.columns(2)
+
+with col1:
+    category_filter = st.multiselect(
+        "Select Product Category",
+        options=df['Category'].unique(),
+        default=df['Category'].unique()
+    )
+
+with col2:
+    segment_filter = st.multiselect(
+        "Select Customer Segment",
+        options=df['Segment'].unique(),
+        default=df['Segment'].unique()
+    )
+
+#Applying filters
+filtered_df = df[
+    (df['Category'].isin(category_filter)) & 
+    (df['Segment'].isin(segment_filter))
+]
+
+#Showing filtered sales trend
+df_filtered_monthly = filtered_df.groupby(filtered_df['Order Date'].dt.to_period('M'))['Sales'].sum().reset_index()
+df_filtered_monthly['Order Date'] = df_filtered_monthly['Order Date'].dt.to_timestamp()
+
+fig2 = px.line(df_filtered_monthly,
+               x='Order Date',
+               y='Sales',
+               title='Filtered Monthly Sales')
+fig2.update_traces(line_color='#ff7f0e', line_width=3)
+fig2.update_layout(hovermode='x unified')
+
+st.plotly_chart(fig2, use_container_width=True)
+
+#----------Time Series Forecasting--------#
+
+from prophet import Prophet
+import numpy as np
+
+#Forecasting Section
+st.subheader("Sales Forecast")
+
+#Preparing the data for Prophet
+forecast_df = df.groupby('Order Date')['Sales'].sum().reset_index()
+forecast_df.columns = ['ds', 'y']  # Prophet requires 'ds' and 'y' column names
+
+# Sidebar controls for forecasting
+st.sidebar.header("Forecast Settings")
+forecast_months = st.sidebar.slider("Forecast Period (months)", 1, 12, 6)
+
+#Training the model
+@st.cache_resource
+def train_model(data):
+    model = Prophet(
+        yearly_seasonality=True,
+        weekly_seasonality=False,
+        daily_seasonality=False,
+        seasonality_mode='multiplicative'
+    )
+    model.fit(data)
+    return model
+
+with st.spinner('Training forecasting model...'):
+    model = train_model(forecast_df)
+
+#Making the future predictions
+future = model.make_future_dataframe(periods=forecast_months * 30, freq='D')
+forecast = model.predict(future)
+
+#Plotting the forecast
+fig_forecast = go.Figure()
+
+#Historical data
+fig_forecast.add_trace(go.Scatter(
+    x=forecast_df['ds'],
+    y=forecast_df['y'],
+    mode='lines',
+    name='Historical Sales',
+    line=dict(color='#1f77b4', width=2)
+))
+
+#Forecast
+forecast_future = forecast[forecast['ds'] > forecast_df['ds'].max()]
+fig_forecast.add_trace(go.Scatter(
+    x=forecast_future['ds'],
+    y=forecast_future['yhat'],
+    mode='lines',
+    name='Forecast',
+    line=dict(color='#ff7f0e', width=2, dash='dash')
+))
+
+#Confidence intervals
+fig_forecast.add_trace(go.Scatter(
+    x=forecast_future['ds'],
+    y=forecast_future['yhat_upper'],
+    mode='lines',
+    line=dict(width=0),
+    showlegend=False,
+    hoverinfo='skip'
+))
+
+fig_forecast.add_trace(go.Scatter(
+    x=forecast_future['ds'],
+    y=forecast_future['yhat_lower'],
+    mode='lines',
+    fill='tonexty',
+    fillcolor='rgba(255, 127, 14, 0.2)',
+    line=dict(width=0),
+    name='Confidence Interval',
+    hoverinfo='skip'
+))
+
+fig_forecast.update_layout(
+    title=f'Sales Forecast - Next {forecast_months} Months',
+    xaxis_title='Date',
+    yaxis_title='Sales ($)',
+    hovermode='x unified',
+    height=500
+)
+
+st.plotly_chart(fig_forecast, use_container_width=True)
+
+#Forecast metrics
+st.subheader("Forecast Summary")
+col1, col2, col3 = st.columns(3)
+
+historical_avg = forecast_df['y'].mean()
+forecast_avg = forecast_future['yhat'].mean()
+forecast_total = forecast_future['yhat'].sum()
+
+col1.metric(
+    "Avg Historical Daily Sales",
+    f"${historical_avg:,.2f}"
+)
+col2.metric(
+    "Avg Forecasted Daily Sales",
+    f"${forecast_avg:,.2f}",
+    f"{((forecast_avg - historical_avg) / historical_avg * 100):.1f}%"
+)
+col3.metric(
+    f"Total Forecasted Revenue ({forecast_months}mo)",
+    f"${forecast_total:,.2f}"
+)
+
+#-----What-If Scenario Simulator ---#
+
+#What-If Scenario Simulator
+st.subheader("What-If Scenario Simulator")
+st.markdown("Adjust variables below to see how they impact your sales forecast")
+
+#Creating the adjustment controls
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    marketing_boost = st.slider(
+        "Marketing Spend Increase (%)",
+        min_value=-50,
+        max_value=100,
+        value=0,
+        step=5,
+        help="How much will you increase/decrease marketing spend?"
+    )
+
+with col2:
+    seasonality_boost = st.slider(
+        "Seasonal Campaign Boost (%)",
+        min_value=0,
+        max_value=50,
+        value=0,
+        step=5,
+        help="Expected boost from seasonal campaigns (holidays, promotions)"
+    )
+
+with col3:
+    pricing_change = st.slider(
+        "Price Adjustment (%)",
+        min_value=-30,
+        max_value=30,
+        value=0,
+        step=5,
+        help="How will pricing changes affect sales?"
+    )
+
+#Calculating the scenario impact
+#Simple model: each variable contributes to overall forecast adjustment
+marketing_impact = marketing_boost * 0.5  # Marketing has 50% efficiency
+seasonality_impact = seasonality_boost
+pricing_impact = pricing_change * -0.7  # Price increases reduce volume by 70%
+
+total_impact = (100 + marketing_impact + seasonality_impact + pricing_impact) / 100
+
+#Applying the scenario to forecast
+forecast_scenario = forecast_future.copy()
+forecast_scenario['yhat_scenario'] = forecast_scenario['yhat'] * total_impact
+forecast_scenario['yhat_upper_scenario'] = forecast_scenario['yhat_upper'] * total_impact
+forecast_scenario['yhat_lower_scenario'] = forecast_scenario['yhat_lower'] * total_impact
+
+#Plotting the scenario comparison
+fig_scenario = go.Figure()
+
+#Original forecast
+fig_scenario.add_trace(go.Scatter(
+    x=forecast_future['ds'],
+    y=forecast_future['yhat'],
+    mode='lines',
+    name='Original Forecast',
+    line=dict(color='#1f77b4', width=2, dash='dot')
+))
+
+#Scenario forecast
+fig_scenario.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=forecast_scenario['yhat_scenario'],
+    mode='lines',
+    name='Scenario Forecast',
+    line=dict(color='#2ca02c', width=3)
+))
+
+#Scenario confidence intervals
+fig_scenario.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=forecast_scenario['yhat_upper_scenario'],
+    mode='lines',
+    line=dict(width=0),
+    showlegend=False,
+    hoverinfo='skip'
+))
+
+fig_scenario.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=forecast_scenario['yhat_lower_scenario'],
+    mode='lines',
+    fill='tonexty',
+    fillcolor='rgba(44, 160, 68, 0.2)',
+    line=dict(width=0),
+    name='Scenario Confidence Interval',
+    hoverinfo='skip'
+))
+
+fig_scenario.update_layout(
+    title='Scenario vs Original Forecast',
+    xaxis_title='Date',
+    yaxis_title='Sales ($)',
+    hovermode='x unified',
+    height=500
+)
+
+st.plotly_chart(fig_scenario, use_container_width=True)
+
+#Scenario impact summary
+st.subheader("Scenario Impact Analysis")
+
+original_total = forecast_future['yhat'].sum()
+scenario_total = forecast_scenario['yhat_scenario'].sum()
+revenue_diff = scenario_total - original_total
+percent_change = ((scenario_total - original_total) / original_total) * 100
+
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric(
+    "Original Forecast",
+    f"${original_total:,.0f}"
+)
+
+col2.metric(
+    "Scenario Forecast",
+    f"${scenario_total:,.0f}",
+    f"{percent_change:+.1f}%"
+)
+
+col3.metric(
+    "Revenue Difference",
+    f"${revenue_diff:+,.0f}",
+    "Gain" if revenue_diff > 0 else "Loss"
+)
+
+col4.metric(
+    "Total Impact",
+    f"{(total_impact - 1) * 100:+.1f}%"
+)
+
+#Breakdown of impacts
+st.markdown("#### Impact Breakdown")
+impact_data = {
+    'Factor': ['Marketing Spend', 'Seasonal Campaigns', 'Pricing Changes', 'Total'],
+    'Adjustment (%)': [marketing_boost, seasonality_boost, pricing_change, '—'],
+    'Impact on Sales (%)': [
+        f"{marketing_impact:+.1f}%",
+        f"{seasonality_impact:+.1f}%",
+        f"{pricing_impact:+.1f}%",
+        f"{(total_impact - 1) * 100:+.1f}%"
+    ]
+}
+
+impact_df = pd.DataFrame(impact_data)
+st.dataframe(impact_df, use_container_width=True, hide_index=True)
+
+#Insights
+st.markdown("Key Insights")
+insights = []
+
+if marketing_boost > 0:
+    insights.append(f"Increasing marketing by {marketing_boost}% could boost sales by ~{marketing_impact:.1f}%")
+elif marketing_boost < 0:
+    insights.append(f"Cutting marketing by {abs(marketing_boost)}% may reduce sales by ~{abs(marketing_impact):.1f}%")
+
+if seasonality_boost > 0:
+    insights.append(f"Seasonal campaigns could add {seasonality_boost}% to sales")
+
+if pricing_change > 0:
+    insights.append(f"Price increase of {pricing_change}% may reduce volume by ~{abs(pricing_impact):.1f}%")
+elif pricing_change < 0:
+    insights.append(f"Price discount of {abs(pricing_change)}% could increase volume by ~{abs(pricing_impact):.1f}%")
+
+if not insights:
+    insights.append("Adjust the sliders above to explore different scenarios")
+
+for insight in insights:
+    st.markdown(insight)
+
+#------Monte Carlo Simulation------#
+
+#Monte Carlo Simulation
+st.subheader("Monte Carlo Simulation - Risk Analysis")
+st.markdown("Running 1,000 simulations to assess forecast uncertainty and risk")
+
+#Simulation parameters
+col1, col2 = st.columns(2)
+
+with col1:
+    num_simulations = st.select_slider(
+        "Number of Simulations",
+        options=[100, 500, 1000, 2000, 5000],
+        value=1000
+    )
+
+with col2:
+    uncertainty_level = st.slider(
+        "Uncertainty Level (%)",
+        min_value=5,
+        max_value=30,
+        value=15,
+        step=5,
+        help="Higher values = more variability in simulations"
+    )
+
+#Run the Monte Carlo simulation
+@st.cache_data
+def run_monte_carlo(forecast_data, scenario_forecast, num_sims, uncertainty):
+    """
+    Run Monte Carlo simulation on the forecast
+    """
+    np.random.seed(42)
+    simulations = []
+    
+    #Get the scenario forecast values
+    forecast_values = scenario_forecast['yhat_scenario'].values
+    
+    for _ in range(num_sims):
+        #Adding random variation based on uncertainty level
+        #Using normal distribution with mean=forecast, std=uncertainty
+        random_factors = np.random.normal(1.0, uncertainty/100, len(forecast_values))
+        sim_result = forecast_values * random_factors
+        simulations.append(sim_result)
+    
+    return np.array(simulations)
+
+#Run simulation
+with st.spinner(f'Running {num_simulations:,} simulations...'):
+    simulations = run_monte_carlo(
+        forecast_future, 
+        forecast_scenario, 
+        num_simulations, 
+        uncertainty_level
+    )
+
+#Calculating percentiles
+p10 = np.percentile(simulations, 10, axis=0)
+p25 = np.percentile(simulations, 25, axis=0)
+p50 = np.percentile(simulations, 50, axis=0)  # Median
+p75 = np.percentile(simulations, 75, axis=0)
+p90 = np.percentile(simulations, 90, axis=0)
+
+#Plotting Monte Carlo results
+fig_mc = go.Figure()
+
+#Adding percentile bands
+fig_mc.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=p90,
+    mode='lines',
+    line=dict(width=0),
+    showlegend=False,
+    hoverinfo='skip'
+))
+
+fig_mc.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=p10,
+    mode='lines',
+    fill='tonexty',
+    fillcolor='rgba(255, 0, 0, 0.1)',
+    line=dict(width=0),
+    name='10th-90th Percentile',
+))
+
+fig_mc.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=p75,
+    mode='lines',
+    line=dict(width=0),
+    showlegend=False,
+    hoverinfo='skip'
+))
+
+fig_mc.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=p25,
+    mode='lines',
+    fill='tonexty',
+    fillcolor='rgba(255, 165, 0, 0.2)',
+    line=dict(width=0),
+    name='25th-75th Percentile',
+))
+
+#Median line
+fig_mc.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=p50,
+    mode='lines',
+    name='Median (50th Percentile)',
+    line=dict(color='#2ca02c', width=3)
+))
+
+#Original scenario
+fig_mc.add_trace(go.Scatter(
+    x=forecast_scenario['ds'],
+    y=forecast_scenario['yhat_scenario'],
+    mode='lines',
+    name='Scenario Forecast',
+    line=dict(color='blue', width=2, dash='dash')
+))
+
+fig_mc.update_layout(
+    title=f'Monte Carlo Simulation Results ({num_simulations:,} simulations)',
+    xaxis_title='Date',
+    yaxis_title='Sales ($)',
+    hovermode='x unified',
+    height=500
+)
+
+st.plotly_chart(fig_mc, use_container_width=True)
+
+#Risk metrics
+st.subheader("Risk Metrics")
+
+#Calculating the total revenue for each percentile
+total_p10 = p10.sum()
+total_p25 = p25.sum()
+total_p50 = p50.sum()
+total_p75 = p75.sum()
+total_p90 = p90.sum()
+
+col1, col2, col3, col4, col5 = st.columns(5)
+
+col1.metric(
+    "Worst Case (10%)",
+    f"${total_p10:,.0f}",
+    help="Only 10% chance revenue will be below this"
+)
+
+col2.metric(
+    "Conservative (25%)",
+    f"${total_p25:,.0f}",
+    help="25th percentile outcome"
+)
+
+col3.metric(
+    "Most Likely (50%)",
+    f"${total_p50:,.0f}",
+    help="Median outcome"
+)
+
+col4.metric(
+    "Optimistic (75%)",
+    f"${total_p75:,.0f}",
+    help="75th percentile outcome"
+)
+
+col5.metric(
+    "Best Case (90%)",
+    f"${total_p90:,.0f}",
+    help="Only 10% chance revenue will exceed this"
+)
+
+#Distribution histogram
+st.markdown("Revenue Distribution")
+
+#Calculating the total revenue for each simulation
+sim_totals = simulations.sum(axis=1)
+
+fig_hist = go.Figure()
+
+fig_hist.add_trace(go.Histogram(
+    x=sim_totals,
+    nbinsx=50,
+    name='Simulations',
+    marker_color='#2ca02c',
+    opacity=0.7
+))
+
+#Adding percentile lines
+for percentile, value, color in [
+    (10, total_p10, 'red'),
+    (50, total_p50, 'green'),
+    (90, total_p90, 'orange')
+]:
+    fig_hist.add_vline(
+        x=value,
+        line_dash="dash",
+        line_color=color,
+        annotation_text=f"P{percentile}: ${value:,.0f}",
+        annotation_position="top"
+    )
+
+fig_hist.update_layout(
+    title=f'Distribution of Total Revenue ({num_simulations:,} simulations)',
+    xaxis_title='Total Revenue ($)',
+    yaxis_title='Frequency',
+    showlegend=False,
+    height=400
+)
+
+st.plotly_chart(fig_hist, use_container_width=True)
+
+#Risk analysis summary
+st.markdown("Risk Analysis Summary")
+
+mean_revenue = sim_totals.mean()
+std_revenue = sim_totals.std()
+downside_risk = (scenario_total - total_p10) / scenario_total * 100
+upside_potential = (total_p90 - scenario_total) / scenario_total * 100
+
+risk_col1, risk_col2, risk_col3, risk_col4 = st.columns(4)
+
+risk_col1.metric(
+    "Expected Value",
+    f"${mean_revenue:,.0f}"
+)
+
+risk_col2.metric(
+    "Standard Deviation",
+    f"${std_revenue:,.0f}"
+)
+
+risk_col3.metric(
+    "Downside Risk",
+    f"{downside_risk:.1f}%",
+    delta=None,
+    delta_color="inverse"
+)
+
+risk_col4.metric(
+    "Upside Potential",
+    f"{upside_potential:.1f}%"
+)
+
+#Risk interpretation
+st.markdown("Risk Interpretation")
+
+confidence_range = total_p90 - total_p10
+risk_level = "LOW" if downside_risk < 15 else "MODERATE" if downside_risk < 25 else "HIGH"
+
+st.markdown(f"""
+- **Risk Level**: {risk_level}
+- **Confidence Range**: ${total_p10:,.0f} to ${total_p90:,.0f} (80% probability)
+- **Volatility**: The revenue could vary by ±${std_revenue:,.0f} from the expected value
+- **Recommendation**: {"Forecast appears reliable with manageable risk" 
+                       if risk_level == "LOW" 
+                       else "Consider risk mitigation strategies" 
+                       if risk_level == "MODERATE" 
+                       else "High uncertainty - implement contingency plans"}
+""")
