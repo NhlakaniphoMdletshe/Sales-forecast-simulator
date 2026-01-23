@@ -4,7 +4,7 @@ An intelligent business analytics platform that combines time series forecasting
 
 This project demonstrates end-to-end data science skills, from data processing and ML model development to deploying a production-ready interactive application.
 
-👉 **Live Demo:** Try it here  
+👉 **Live Demo:** https://sales-forecast-simulator-ffl9dmdytqya4x7fgj5mky.streamlit.app/ 
 
 ---
 
@@ -161,29 +161,29 @@ importance = rf.feature_importances_
 - Works with mixed data types
 
 # 📈 Use Cases
-## Retail & E-Commerce
+### Retail & E-Commerce
 - Inventory planning
 - Promotion testing
 - Marketing spend optimization
 - Sales anomaly detection
 
-## SaaS & Subscriptions
+### SaaS & Subscriptions
 - MRR forecasting
 - Churn impact modeling
 - Customer segmentation analysis
 
-## Financial Planning
+### Financial Planning
 - Budget forecasting
 - Risk scenarios for leadership
 - Board-level reporting
 
-## Marketing & Growth
+### Marketing & Growth
 - ROI modeling
 - Pricing elasticity analysis
 - Channel optimization
 
 # 🚀 Getting Started
-## Installation
+### Installation
 ```python
 git clone https://github.com/nhlakaniphomdletshe/sales-forecast-simulator.git
 cd sales-forecast-simulator
@@ -195,22 +195,22 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 # 🧪 Technical Challenges & Solutions
-## Universal Data Compatibility
+### Universal Data Compatibility
 - Intelligent column detection
 - Fallbacks for missing dates
 - Robust validation and error handling
 
-## Real-Time Performance
+### Real-Time Performance
 - Streamlit caching
 - Cached models and simulations
 - Sub-second response time
 
-## Accessibility for Non-Technical Users
+### Accessibility for Non-Technical Users
 - Plain-language insights
 - Sliders instead of configs
 - No ML knowledge required
 
-## Python Compatibility
+### Python Compatibility
 - Version ranges in dependencies
 - Tested on Python 3.9–3.13
 - Verified on Streamlit Cloud
