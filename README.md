@@ -125,4 +125,153 @@ model = Prophet(
     seasonality_mode="multiplicative",
     interval_width=0.95
 )
+Decomposes trend and seasonality
+
+Handles missing data and outliers
+
+Produces uncertainty intervals
+
+Monte Carlo Simulation
+for iteration in range(num_simulations):
+    random_factors = np.random.normal(1.0, uncertainty/100, periods)
+    simulated_revenue = base_forecast * random_factors
+Models business volatility
+
+Generates probability distributions
+
+Quantifies forecast risk
+
+Anomaly Detection (Z-Score)
+z_score = abs((value - rolling_mean) / rolling_std)
+is_anomaly = z_score > threshold
+Flags unexpected deviations
+
+Sensitivity is configurable
+
+Feature Importance (Random Forest)
+rf = RandomForestRegressor(n_estimators=100, max_depth=10)
+rf.fit(features, sales)
+importance = rf.feature_importances_
+Handles non-linear relationships
+
+Works with mixed data types
+
+📈 Use Cases
+Retail & E-Commerce
+Inventory planning
+
+Promotion testing
+
+Marketing spend optimization
+
+Sales anomaly detection
+
+SaaS & Subscriptions
+MRR forecasting
+
+Churn impact modeling
+
+Customer segmentation analysis
+
+Financial Planning
+Budget forecasting
+
+Risk scenarios for leadership
+
+Board-level reporting
+
+Marketing & Growth
+ROI modeling
+
+Pricing elasticity analysis
+
+Channel optimization
+
+🚀 Getting Started
+Installation
+git clone https://github.com/nhlakaniphomdletshe/sales-forecast-simulator.git
+cd sales-forecast-simulator
+
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+pip install -r requirements.txt
+streamlit run app.py
+🧪 Technical Challenges & Solutions
+Universal Data Compatibility
+Intelligent column detection
+
+Fallbacks for missing dates
+
+Robust validation and error handling
+
+Real-Time Performance
+Streamlit caching
+
+Cached models and simulations
+
+Sub-second response time
+
+Accessibility for Non-Technical Users
+Plain-language insights
+
+Sliders instead of configs
+
+No ML knowledge required
+
+Python Compatibility
+Version ranges in dependencies
+
+Tested on Python 3.9–3.13
+
+Verified on Streamlit Cloud
+
+🔮 Future Enhancements
+Multiple forecasting models (ARIMA, LSTM, XGBoost)
+
+Ensemble forecasting
+
+SQL & Google Sheets integration
+
+PDF & PowerPoint exports
+
+User accounts and saved scenarios
+
+GPU acceleration for large datasets
+
+📚 Project Structure
+sales-forecast-simulator/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+├── .gitignore
+├── Sample - Superstore.csv
+└── .streamlit/
+    └── config.toml
+🤝 Contributing
+Contributions are welcome.
+
+Fork the repository
+
+Create a feature branch
+
+Commit your changes
+
+Push to your fork
+
+Open a Pull Request
+
+📄 License
+MIT License. See the LICENSE file for details.
+
+👤 Author
+Nhlakaniph Mdletshe
+
+GitHub: https://github.com/nhlakaniphomdletshe
+
+LinkedIn: https://www.linkedin.com/in/nhlakaniph-mdletshe/
+
+Portfolio: (add link)
+
 
