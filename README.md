@@ -101,3 +101,28 @@ _Export buttons and sample reports_
 ## 🛠️ Technical Implementation
 
 ### Architecture
+
+### Tech Stack
+
+| Component | Technology | Purpose |
+|--------|-----------|--------|
+| Frontend | Streamlit | Interactive UI |
+| Forecasting | Facebook Prophet | Time series modeling |
+| Machine Learning | Scikit-learn (Random Forest) | Feature importance |
+| Data Processing | Pandas, NumPy | ETL & transformations |
+| Visualization | Plotly | Interactive charts |
+| Statistics | Custom | Monte Carlo & anomaly detection |
+| Export | OpenPyXL | Excel reports |
+
+---
+
+## 🔑 Key Algorithms
+
+### Time Series Forecasting (Prophet)
+```python
+model = Prophet(
+    yearly_seasonality=True,
+    seasonality_mode="multiplicative",
+    interval_width=0.95
+)
+
