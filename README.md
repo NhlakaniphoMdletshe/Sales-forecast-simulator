@@ -42,7 +42,7 @@ Adjust scenarios in real time:
 - Instant visual feedback
 - Side-by-side comparison of base vs scenario forecasts
 
-![What-If Scenarios]
+![What-If Scenarios](What-IfScenarios.png)
 _What-If sliders and scenario comparison_
 
 ---
@@ -53,7 +53,7 @@ _What-If sliders and scenario comparison_
 - Revenue distribution visualization
 - Worst-case, most-likely, and best-case scenarios
 
-![Monte Carlo Simulation]
+![Monte Carlo Simulation](MonteCarloSimulation.png)
 _Monte Carlo simulation results_
 
 ---
@@ -64,7 +64,7 @@ _Monte Carlo simulation results_
 - Adjustable sensitivity
 - Helps catch data issues or unexpected market behavior
 
-![Anomaly Detection]
+![Anomaly Detection](AnomalyDetection.png)
 _Anomaly alerts in sales data_
 
 ---
@@ -75,7 +75,7 @@ _Anomaly alerts in sales data_
 - Supports numeric and categorical features
 - Clear visual ranking of drivers
 
-![Feature Importance]
+![Feature Importance](FeatureImportance.png)
 _Feature importance bar chart_
 
 ---
@@ -93,7 +93,7 @@ _Feature importance bar chart_
 - Generate executive summary reports (TXT)
 - Timestamped filenames for version control
 
-![Export Options]
+![Export Options](ExportOptions.png)
 _Export buttons and sample reports_
 
 ---
