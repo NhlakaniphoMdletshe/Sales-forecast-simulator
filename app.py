@@ -1201,3 +1201,7 @@ with insight_col2:
         st.markdown("---")
         st.markdown("Built with Streamlit, Prophet, and Plotly | Data updates in real-time as you adjust filters")
 
+# ============= DATA PREVIEW =============
+with st.expander("View Raw Data Preview"):
+    st.dataframe(filtered_df.head(50))
+    st.caption(f"Showing 50 of {len(filtered_df):,} total records")
