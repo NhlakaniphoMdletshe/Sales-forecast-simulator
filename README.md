@@ -28,7 +28,7 @@ The goal was to make enterprise-level forecasting accessible to everyone, includ
 - Displays confidence intervals for uncertainty
 - Adapts to different industries and business cycles
 
-![Sales Forecast Chart]
+![Sales Forecast Chart](SalesForecastChart.png)
 _Historical sales with forecasted trend and confidence intervals_
 
 ---
