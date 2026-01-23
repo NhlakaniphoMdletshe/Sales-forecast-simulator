@@ -8,6 +8,11 @@ import base64
 from io import BytesIO
 import json
 
+import plotly
+import plotly.express as px
+print("Plotly version:", plotly.__version__)
+
+
 # Page config
 st.set_page_config(
     page_title="Sales Forecast Simulator",
